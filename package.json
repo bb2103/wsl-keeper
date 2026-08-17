@@ -1,7 +1,7 @@
 {
   "name": "wsl-keeper",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "homepage": "https://github.com/bb2103/wsl-keeper#readme",
   "bugs": {
