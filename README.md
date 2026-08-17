@@ -16,8 +16,6 @@
 
 Keeps a WSL distro running. Remounts Linux disks after reboot.
 
-Close the window → tray. Quit from the tray menu.
-
 <p align="center">
   <img src="docs/interface-en_us.png" alt="Dashboard" width="720">
 </p>
