@@ -1,72 +1,73 @@
-name: 缺陷报告
-description: 守护进程、挂盘、托盘或界面出了问题
+name: Bug report
+description: Guardian, disks, tray, or UI · 守护、挂盘、托盘或界面
 title: "[Bug] "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        请尽量附上日志（设置页 → 打开日志目录）。日志在 `%APPDATA%\lea\wsl-keeper\logs`。
+        Attach logs if you can: **Settings → Open logs** (`%APPDATA%\lea\wsl-keeper\logs`).
+        可以的话附上日志：设置 → 打开日志。
   - type: textarea
     id: what-happened
     attributes:
-      label: 发生了什么
-      description: 实际行为，以及你期望的行为。
+      label: What happened / 发生了什么
+      description: Actual vs expected. · 实际行为和期望行为。
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: 复现步骤
+      label: Steps / 复现步骤
       placeholder: |
-        1. 选择发行版 Ubuntu
-        2. 打开自动挂载
-        3. 重启 Windows
+        1. Pick distro Ubuntu / 选择发行版 Ubuntu
+        2. Enable auto-mount / 打开自动挂载
+        3. Reboot Windows / 重启 Windows
     validations:
       required: true
   - type: dropdown
     id: area
     attributes:
-      label: 影响范围
+      label: Area / 范围
       options:
-        - WSL 保活
-        - 物理磁盘挂载
-        - 托盘 / 开机启动
-        - 设置与配置
-        - 界面
-        - 安装 / 更新
-        - 其他
+        - WSL keep-alive / WSL 保活
+        - Disk mount / 物理磁盘挂载
+        - Tray / autostart / 托盘、开机启动
+        - Settings / 设置与配置
+        - UI / 界面
+        - Install / update / 安装与更新
+        - Other / 其他
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: 应用版本
+      label: App version / 应用版本
       placeholder: "0.1.0"
     validations:
       required: true
   - type: input
     id: windows
     attributes:
-      label: Windows 版本
+      label: Windows
       placeholder: Windows 11 24H2
   - type: input
     id: wsl
     attributes:
-      label: WSL / 发行版
-      placeholder: WSL 2.4.x，Ubuntu 22.04
+      label: WSL / distro / 发行版
+      placeholder: WSL 2.4.x, Ubuntu 22.04
   - type: textarea
     id: logs
     attributes:
-      label: 相关日志
-      description: 可粘贴 `wsl-keeper.*.log` 或 `mount_task.log` 中的片段。
+      label: Logs / 日志
+      description: Paste from `wsl-keeper.*.log` or `mount_task.log`. · 粘贴相关片段即可。
       render: text
   - type: checkboxes
     id: checks
     attributes:
-      label: 提交前
+      label: Before submitting / 提交前
       options:
-        - label: 已在 Issues 里搜索过类似问题
+        - label: I searched existing issues / 已搜索过类似 Issue
           required: true
-        - label: 问题在最新 Release 或当前 main 上仍能复现
+        - label: Reproduces on the latest release or current main / 最新 Release 或当前 main 仍能复现
           required: true
