@@ -11,8 +11,6 @@
 
 保持选定的 WSL 发行版在线。重启后把 Linux 物理盘再挂回 WSL。
 
-关窗口 = 进托盘。退出请用托盘菜单。
-
 <p align="center">
   <img src="../interface-zh_hant.png" alt="概览" width="720">
 </p>
