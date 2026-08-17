@@ -1,0 +1,38 @@
+name: 功能建议
+description: 提出新能力或改进现有行为
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决什么问题
+      description: 当前缺什么，或哪里用起来别扭。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 你希望应用怎么表现。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 其他想法
+      description: 有没有替代做法，或可以先不做的部分。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 相关模块
+      options:
+        - WSL 保活
+        - 物理磁盘挂载
+        - 托盘 / 开机启动
+        - 设置与配置
+        - 界面 / 多语言
+        - 安装与发布
+        - 其他
+    validations:
+      required: true

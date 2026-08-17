@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 下载安装包
+    url: https://github.com/bb2103/wsl-keeper/releases
+    about: 从 GitHub Releases 获取 MSI / NSIS 安装包

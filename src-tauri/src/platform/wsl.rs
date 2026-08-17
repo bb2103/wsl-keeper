@@ -218,7 +218,7 @@ pub fn decode_wsl_output(bytes: &[u8]) -> String {
 }
 
 fn looks_like_utf16_le(bytes: &[u8]) -> bool {
-    if bytes.len() < 8 || bytes.len() % 2 != 0 {
+    if bytes.len() < 8 || !bytes.len().is_multiple_of(2) {
         return false;
     }
     let zeros = bytes.iter().skip(1).step_by(2).filter(|&&b| b == 0).count();
