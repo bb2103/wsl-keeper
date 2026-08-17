@@ -1,38 +1,38 @@
-name: 功能建议
-description: 提出新能力或改进现有行为
+name: Feature request
+description: New capability or a change to existing behavior · 新能力或改进
 title: "[Feature] "
 labels: ["enhancement"]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: 要解决什么问题
-      description: 当前缺什么，或哪里用起来别扭。
+      label: Problem / 要解决什么
+      description: What’s missing or awkward today. · 现在缺什么，或哪里别扭。
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: 建议方案
-      description: 你希望应用怎么表现。
+      label: Proposal / 建议
+      description: How you want it to work. · 希望应用怎么表现。
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: 其他想法
-      description: 有没有替代做法，或可以先不做的部分。
+      label: Alternatives / 其他想法
+      description: Other approaches, or parts that can wait. · 别的做法，或可以先不做的部分。
   - type: dropdown
     id: area
     attributes:
-      label: 相关模块
+      label: Area / 范围
       options:
-        - WSL 保活
-        - 物理磁盘挂载
-        - 托盘 / 开机启动
-        - 设置与配置
-        - 界面 / 多语言
-        - 安装与发布
-        - 其他
+        - WSL keep-alive / WSL 保活
+        - Disk mount / 物理磁盘挂载
+        - Tray / autostart / 托盘、开机启动
+        - Settings / 设置与配置
+        - UI / locale / 界面、语言
+        - Install / release / 安装与发布
+        - Other / 其他
     validations:
       required: true
