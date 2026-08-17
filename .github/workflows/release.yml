@@ -42,6 +42,26 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # tauri-action replaces __VERSION__ from tauri.conf.json / package.json,
+      # not from the git tag. Fail early if they drifted.
+      - name: Verify versions match git tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' |
+            Select-Object -First 1).Matches.Groups[1].Value
+          Write-Host "tag=$tag  package.json=$pkg  Cargo.toml=$cargo"
+          if ($tag -ne $pkg) {
+            Write-Error "package.json ($pkg) does not match git tag ($tag). tauri-action attaches to v$pkg, not the pushed tag."
+            exit 1
+          }
+          if ($tag -ne $cargo) {
+            Write-Error "src-tauri/Cargo.toml ($cargo) does not match git tag ($tag)."
+            exit 1
+          }
+
       - name: Build and attach to GitHub Release
         uses: tauri-apps/tauri-action@v1
         env:
