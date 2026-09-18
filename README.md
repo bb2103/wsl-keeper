@@ -29,7 +29,7 @@ Keeps a WSL distro running. Remounts Linux disks after reboot.
 ## Usage
 
 1. **Settings** → pick a distro → turn the guardian on
-2. Optional: a command to run after the distro starts
+2. Optional: a command to run once after the distro starts — editing it runs the new command too
 3. Linux disk (ext4 / xfs / btrfs) → Disks → Guard → auto-mount → accept the one admin prompt  
    Mount point: `/mnt/wsl/<name>`
 4. Pause from the dashboard or tray when you don’t want auto-restart

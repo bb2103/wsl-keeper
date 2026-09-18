@@ -165,6 +165,8 @@ impl AppConfig {
 pub struct ConfigManager {
     path: PathBuf,
     config: Arc<RwLock<AppConfig>>,
+    /// When the config was last written; used to let debounced UI saves settle.
+    last_write: Arc<std::sync::Mutex<std::time::Instant>>,
 }
 
 impl ConfigManager {
@@ -186,6 +188,7 @@ impl ConfigManager {
         Ok(Self {
             path,
             config: Arc::new(RwLock::new(config)),
+            last_write: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
         })
     }
 
@@ -204,6 +207,7 @@ impl ConfigManager {
         config.validate()?;
         self.persist(&config)?;
         *self.config.write().await = config;
+        self.mark_written();
         Ok(())
     }
 
@@ -214,6 +218,7 @@ impl ConfigManager {
         let mut config = self.config.write().await;
         f(&mut config);
         self.persist(&config)?;
+        self.mark_written();
         Ok(())
     }
 
@@ -236,6 +241,21 @@ impl ConfigManager {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// How long since the config was last written. Callers wait for this to
+    /// pass a settle window so debounced saves don't act on partial input.
+    pub fn untouched_for(&self) -> std::time::Duration {
+        self.last_write
+            .lock()
+            .map(|at| at.elapsed())
+            .unwrap_or_default()
+    }
+
+    fn mark_written(&self) {
+        if let Ok(mut at) = self.last_write.lock() {
+            *at = std::time::Instant::now();
+        }
     }
 
     fn persist(&self, config: &AppConfig) -> anyhow::Result<()> {

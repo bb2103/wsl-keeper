@@ -89,6 +89,7 @@ export const zh: DeepStringify<typeof en> = {
     detectingDistros: "正在检测已安装的发行版…",
     distroDefault: "默认",
     initCommand: "启动后命令（可选）",
+    initCommandHint: "发行版启动后执行一次，修改后也会立即执行；带 sudo 的命令需配置免密。",
     notWsl2: "当前发行版不是 WSL 2，物理磁盘挂载将保持禁用。",
     disks: "磁盘",
     disksHint:

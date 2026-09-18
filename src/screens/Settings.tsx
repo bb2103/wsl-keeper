@@ -257,6 +257,7 @@ export default function Settings({
                 patch({ initCommand: e.target.value.trim() ? e.target.value : null })
               }
             />
+            <p className="hint">{t("settings.initCommandHint")}</p>
           </div>
           {status && !status.mountSupported && status.wslAvailable && (
             <p className="hint warn">{t("settings.notWsl2")}</p>

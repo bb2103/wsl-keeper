@@ -108,6 +108,7 @@ fn en(key: &str) -> Option<&'static str> {
         }
         "error.startTimeout" => "Timed out starting distro",
         "error.keepAliveExited" => "Keep-alive exited",
+        "error.initCommandFailed" => "Command after start failed: {error}",
         "error.partitionMin" => "Partition numbers start at 1",
         "error.unsupportedFs" => "Unsupported filesystem type: {fs}",
         "error.mountName" => {
@@ -154,6 +155,7 @@ fn zh(key: &str) -> Option<&'static str> {
         "error.distroNotFound" => "未找到发行版“{name}”，请在设置中选择已安装的发行版。",
         "error.startTimeout" => "启动发行版超时",
         "error.keepAliveExited" => "保活进程已退出",
+        "error.initCommandFailed" => "启动后命令执行失败：{error}",
         "error.partitionMin" => "分区号从 1 开始",
         "error.unsupportedFs" => "不支持的文件系统类型：{fs}",
         "error.mountName" => "挂载名“{name}”须为 1–32 位字母、数字、_ 或 -",

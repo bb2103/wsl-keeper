@@ -10,6 +10,7 @@ use tokio::time::{sleep, timeout};
 
 const FAIL_INTERVAL: Duration = Duration::from_secs(30);
 const STABLE_AFTER: Duration = Duration::from_secs(2);
+const INIT_SETTLE: Duration = Duration::from_secs(3);
 const CIRCUIT_THRESHOLD: u32 = 10;
 const CIRCUIT_RESET: Duration = Duration::from_secs(1800);
 
@@ -30,6 +31,8 @@ pub fn start_wsl_guardian(app: AppHandle, state: Arc<AppState>) {
     tauri::async_runtime::spawn(async move {
         let mut alive: Option<KeepAlive> = None;
         let mut notified_down = false;
+        // Last init command executed against the live session; edits re-run it.
+        let mut init_run: Option<String> = None;
 
         loop {
             let mut cfg = state.config.get().await;
@@ -49,7 +52,28 @@ pub fn start_wsl_guardian(app: AppHandle, state: Arc<AppState>) {
                 if session.distro != cfg.distro {
                     session.stop().await;
                     mark_stopped(&state).await;
+                    init_run = None;
                 } else {
+                    match normalized_init(&cfg) {
+                        // Run an edited command against the live session, but only
+                        // once the settings UI's debounced saves settle, so a
+                        // half-typed command never executes.
+                        Some(cmd) if init_run.as_deref() != Some(cmd.as_str()) => {
+                            wait_config_stable(&state, INIT_SETTLE).await;
+                            let latest = state.config.get().await;
+                            if guardian_should_run(&latest) && latest.distro == session.distro {
+                                if let Some(cmd) = normalized_init(&latest)
+                                    .filter(|c| init_run.as_deref() != Some(c.as_str()))
+                                {
+                                    let distro = session.distro.clone();
+                                    run_init_command(&app, &state, &distro, &cmd).await;
+                                    init_run = Some(cmd);
+                                }
+                            }
+                        }
+                        None => init_run = None,
+                        _ => {}
+                    }
                     watch_session(&app, &state, session, &mut notified_down, &mut alive).await;
                     continue;
                 }
@@ -62,19 +86,14 @@ pub fn start_wsl_guardian(app: AppHandle, state: Arc<AppState>) {
 
             match start_session(&cfg.distro).await {
                 Ok(session) => {
-                    if let Some(cmd) = cfg
-                        .init_command
-                        .as_ref()
-                        .map(|s| s.trim().to_string())
-                        .filter(|s| !s.is_empty())
-                    {
-                        let distro = session.distro.clone();
-                        let _ = tauri::async_runtime::spawn_blocking(move || {
-                            wsl::exec_in_distro(&distro, &cmd)
-                        })
-                        .await;
-                    }
                     mark_running(&app, &state, &session.distro, &mut notified_down).await;
+                    if let Some(cmd) = normalized_init(&cfg) {
+                        let distro = session.distro.clone();
+                        run_init_command(&app, &state, &distro, &cmd).await;
+                        init_run = Some(cmd);
+                    } else {
+                        init_run = None;
+                    }
                     state.wakers.disks.notify_waiters();
                     let _ = crate::domain::status::publish(&app, &state).await;
                     alive = Some(session);
@@ -171,6 +190,50 @@ async fn start_session(distro: &str) -> anyhow::Result<KeepAlive> {
             distro: distro.to_string(),
             started: Instant::now(),
         }),
+    }
+}
+
+fn normalized_init(cfg: &AppConfig) -> Option<String> {
+    cfg.init_command
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+async fn run_init_command(app: &AppHandle, state: &AppState, distro: &str, cmd: &str) {
+    tracing::info!("Running init command in {distro}: {cmd}");
+    let distro = distro.to_string();
+    let cmd = cmd.to_string();
+    let result = tauri::async_runtime::spawn_blocking(move || wsl::exec_in_distro(&distro, &cmd))
+        .await
+        .unwrap_or_else(|e| Err(anyhow::anyhow!("init command task failed: {e}")));
+    match result {
+        Ok(output) => {
+            let output = output.trim();
+            if !output.is_empty() {
+                tracing::info!("Init command output: {output}");
+            }
+        }
+        Err(e) => {
+            tracing::warn!("Init command failed: {e}");
+            let message =
+                crate::i18n::tf("error.initCommandFailed", &[("error", &e.to_string())]);
+            state.runtime.write().await.last_error = Some(message);
+        }
+    }
+    let _ = crate::domain::status::publish(app, state).await;
+}
+
+/// Waits until the config has gone untouched for `quiet`, so the settings
+/// UI's debounced saves settle before we act on a changed command.
+async fn wait_config_stable(state: &AppState, quiet: Duration) {
+    loop {
+        let elapsed = state.config.untouched_for();
+        if elapsed >= quiet {
+            return;
+        }
+        sleep(quiet - elapsed).await;
     }
 }
 
@@ -309,5 +372,23 @@ async fn record_start_failure(app: &AppHandle, state: &AppState, distro: &str, e
         rt.wsl_circuit_opened_at = Some(Instant::now());
         notify::notify_wsl_circuit(app, distro);
         tracing::error!("WSL circuit breaker opened for {distro}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_init_command() {
+        let mut cfg = AppConfig::default();
+        assert_eq!(normalized_init(&cfg), None);
+        cfg.init_command = Some("   ".into());
+        assert_eq!(normalized_init(&cfg), None);
+        cfg.init_command = Some("  sudo service docker start ".into());
+        assert_eq!(
+            normalized_init(&cfg).as_deref(),
+            Some("sudo service docker start")
+        );
     }
 }
