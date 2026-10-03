@@ -154,6 +154,20 @@ async fn run_once(app: &AppHandle, state: &AppState) {
     }
 }
 
+/// Whether every enabled disk rule has a verdict for this session:
+/// mounted, circuit tripped, or a retry already scheduled. Rules without
+/// a runtime entry have not been probed yet, so they count as unsettled.
+pub fn disks_settled(
+    rules: &[crate::domain::config::DiskRule],
+    disks: &std::collections::HashMap<String, DiskRuntime>,
+) -> bool {
+    rules.iter().all(|rule| {
+        disks
+            .get(&rule.id)
+            .is_some_and(|d| d.mounted || d.circuit_open || d.next_retry.is_some())
+    })
+}
+
 async fn attempt_mount(distro: &str, rule: &crate::domain::config::DiskRule) -> anyhow::Result<String> {
     let mount_point = rule.mount_point();
     if let Ok(part) = lookup_partition(distro, rule).await {
@@ -216,4 +230,66 @@ async fn mount_device(
         disk::mount_partition_in_wsl(&distro, &rule, &device)
     })
     .await?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::config::DiskRule;
+    use std::collections::HashMap;
+
+    fn rule(id: &str) -> DiskRule {
+        DiskRule {
+            id: id.into(),
+            disk_number: 2,
+            friendly_name: "test".into(),
+            partition: 1,
+            fs_type: "ext4".into(),
+            mount_name: "disk2-1".into(),
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn settled_once_every_rule_has_a_verdict() {
+        let rules = vec![rule("a"), rule("b")];
+        let mut disks = HashMap::new();
+        assert!(!disks_settled(&rules, &disks), "no entries yet");
+
+        disks.insert(
+            "a".into(),
+            DiskRuntime {
+                mounted: true,
+                ..Default::default()
+            },
+        );
+        disks.insert(
+            "b".into(),
+            DiskRuntime {
+                next_retry: Some(Utc::now()),
+                ..Default::default()
+            },
+        );
+        assert!(disks_settled(&rules, &disks));
+
+        disks.insert(
+            "b".into(),
+            DiskRuntime {
+                circuit_open: true,
+                ..Default::default()
+            },
+        );
+        assert!(disks_settled(&rules, &disks), "tripped circuit counts");
+
+        disks.insert(
+            "b".into(),
+            DiskRuntime {
+                mounted: false,
+                ..Default::default()
+            },
+        );
+        assert!(!disks_settled(&rules, &disks), "fresh probe pending");
+
+        assert!(disks_settled(&[], &disks), "no rules settle instantly");
+    }
 }

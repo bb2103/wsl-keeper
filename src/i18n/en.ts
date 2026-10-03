@@ -84,7 +84,7 @@ export const en = {
     distroDefault: "default",
     initCommand: "Command after start (optional)",
     initCommandHint:
-      "Runs once when the distro starts, and again when you edit it. Commands using sudo need passwordless sudo.",
+      "Runs once when the distro starts (after disks are mounted), and again when you edit it. Commands using sudo need passwordless sudo.",
     notWsl2: "This distro is not WSL 2. Physical disk mount will stay disabled.",
     disks: "Disks",
     disksHint:

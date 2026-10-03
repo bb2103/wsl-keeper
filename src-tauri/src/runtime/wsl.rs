@@ -11,6 +11,10 @@ use tokio::time::{sleep, timeout};
 const FAIL_INTERVAL: Duration = Duration::from_secs(30);
 const STABLE_AFTER: Duration = Duration::from_secs(2);
 const INIT_SETTLE: Duration = Duration::from_secs(3);
+/// How long a fresh session waits for the disk guardian's first pass
+/// before the init command runs anyway.
+const DISK_SETTLE_TIMEOUT: Duration = Duration::from_secs(45);
+const DISK_SETTLE_POLL: Duration = Duration::from_millis(500);
 const CIRCUIT_THRESHOLD: u32 = 10;
 const CIRCUIT_RESET: Duration = Duration::from_secs(1800);
 
@@ -66,6 +70,7 @@ pub fn start_wsl_guardian(app: AppHandle, state: Arc<AppState>) {
                                     .filter(|c| init_run.as_deref() != Some(c.as_str()))
                                 {
                                     let distro = session.distro.clone();
+                                    wait_for_disks(&state, &latest).await;
                                     run_init_command(&app, &state, &distro, &cmd).await;
                                     init_run = Some(cmd);
                                 }
@@ -87,14 +92,17 @@ pub fn start_wsl_guardian(app: AppHandle, state: Arc<AppState>) {
             match start_session(&cfg.distro).await {
                 Ok(session) => {
                     mark_running(&app, &state, &session.distro, &mut notified_down).await;
+                    // Kick the disk guardian now so mounts are underway
+                    // before the init command needs them.
+                    state.wakers.disks.notify_waiters();
                     if let Some(cmd) = normalized_init(&cfg) {
                         let distro = session.distro.clone();
+                        wait_for_disks(&state, &cfg).await;
                         run_init_command(&app, &state, &distro, &cmd).await;
                         init_run = Some(cmd);
                     } else {
                         init_run = None;
                     }
-                    state.wakers.disks.notify_waiters();
                     let _ = crate::domain::status::publish(&app, &state).await;
                     alive = Some(session);
                 }
@@ -223,6 +231,39 @@ async fn run_init_command(app: &AppHandle, state: &AppState, distro: &str, cmd: 
         }
     }
     let _ = crate::domain::status::publish(app, state).await;
+}
+
+/// Waits until the disk guardian has given every enabled disk rule a
+/// verdict for this session (mounted, tripped circuit, or a scheduled
+/// retry), since init commands commonly live on the disks we mount.
+/// Capped so a slow or wedged disk pass cannot stall the init command.
+async fn wait_for_disks(state: &AppState, cfg: &AppConfig) {
+    let rules: Vec<_> = cfg
+        .disk_rules
+        .iter()
+        .filter(|r| r.enabled)
+        .cloned()
+        .collect();
+    if rules.is_empty() {
+        return;
+    }
+    let deadline = Instant::now() + DISK_SETTLE_TIMEOUT;
+    loop {
+        let settled = {
+            let rt = state.runtime.read().await;
+            crate::runtime::disk::disks_settled(&rules, &rt.disks)
+        };
+        if settled {
+            return;
+        }
+        if Instant::now() >= deadline {
+            tracing::warn!(
+                "Disks not settled after {DISK_SETTLE_TIMEOUT:?}; running init command anyway"
+            );
+            return;
+        }
+        sleep(DISK_SETTLE_POLL).await;
+    }
 }
 
 /// Waits until the config has gone untouched for `quiet`, so the settings
